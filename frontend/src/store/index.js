@@ -15,8 +15,14 @@ const store = createStore(
             }
         },
         getters:{
+            getToken(state){
+                return state.user.token;
+            },
             getUser(state){
                 return state.user; 
+            },
+            getRoles(state){
+                return state.user.roles;
             }
         }
     }

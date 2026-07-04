@@ -28,7 +28,7 @@ def create_app():
         if not app.security.datastore.find_role("admin"):
             admin = app.security.datastore.create_role(name="admin")
             staff = app.security.datastore.create_role(name="staff")
-            user = app.security.datastore.create_role(name="user")
+            user = app.security.datastore.create_role(name="trekker")
             db.session.flush()
 
             karan = app.security.datastore.create_user(name="Karan",

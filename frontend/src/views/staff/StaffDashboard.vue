@@ -2,5 +2,5 @@
 </script>
 
 <template>
-    Welcome to TrekOps!
+    Welcome to the Staff Dashboard! 
 </template>

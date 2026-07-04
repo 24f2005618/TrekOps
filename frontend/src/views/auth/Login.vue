@@ -1,4 +1,5 @@
 <script setup>
+import {RouterLink} from 'vue-router';
 </script>
 <template>
     <div class="container-fluid d-flex justify-content-center align-items-center" style="height: 100vh;">
@@ -21,6 +22,7 @@
                         <input type="submit" class="btn btn-primary" value="Login">
                     </div>
                 </form>
+                Don't have an account? <RouterLink to="/trekker/register">Register as Trekker</RouterLink>
             </div>
         </div>
     </div>
@@ -37,7 +39,7 @@
         },
         methods: {
             login(){
-                fetch(import.meta.env.VITE_SERVER+"/admin", {
+                fetch(import.meta.env.VITE_SERVER+"signin", {
                     method: "POST",
                     headers: {"Content-Type": "application/json"},
                     body: JSON.stringify({email: this.email, password:this.password})
@@ -46,8 +48,19 @@
                         r.json().then(x => this.message = x.message)
                     }
                     if(r.status == 200){
-                        r.json().then(x=> this.$store.commit('setUser',x))
-                        this.$router.push({name: "home"})
+                        r.json().then(x=>{ 
+                            this.$store.commit('setUser',x) 
+                            if(x.roles.includes("trekker")){
+                                this.$router.push({name: 'trekker-dashboard'
+})
+                            }
+                            else if(x.roles.includes("staff")){
+                                this.$router.push({name: 'staff-dashboard'})
+                            }
+                            else if(x.roles.includes("admin")){
+                                this.$router.push({name: 'admin-dashboard'})
+                            }
+                        })
                     }
                 })
             }

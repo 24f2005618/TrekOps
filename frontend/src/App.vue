@@ -10,9 +10,9 @@
   export default {
     created(){
       const empty = this.$store.state.user;
-      item = localStorage.getItem("user");
+      let item = localStorage.getItem("user");
       item = (item) ? item : JSON.stringify(empty);
-      this.$store.setUser(JSON.parse(item));
+      this.$store.commit('setUser', JSON.parse(item));
     }
   }
 </script>
