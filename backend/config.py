@@ -7,7 +7,7 @@ class Config:
         "SECRET_KEY",
         "pf9Wkove4IKEAXvy-cQkeDPhv9Cb3Ag-wyJILbq_dFw"
     )
-
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "uploads")
     DEBUG = False
     
     # Generate a good salt using:

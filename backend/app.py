@@ -22,7 +22,7 @@ def create_app():
     datastore = SQLAlchemyUserDatastore(db, User, Role)
     app.security = Security(app, datastore)
 
-
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     with app.app_context():
         db.create_all()
         if not app.security.datastore.find_role("admin"):

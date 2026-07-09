@@ -3,7 +3,7 @@ import {RouterLink} from 'vue-router';
 </script>
 <template>
     <div class="container-fluid d-flex justify-content-center align-items-center" style="height: 100vh;">
-        <div class="card">
+        <div class="card col-6">
             <div class="card-body">
                 <h4 class="card-title" align="center">Login</h4>
                 <form v-on:submit.prevent="login">
@@ -22,7 +22,9 @@ import {RouterLink} from 'vue-router';
                         <input type="submit" class="btn btn-primary" value="Login">
                     </div>
                 </form>
-                Don't have an account? <RouterLink to="/trekker/register">Register as Trekker</RouterLink>
+                <div class="text-center mt-3">
+                    Don't have an account? <RouterLink to="/trekker/register">Register as Trekker</RouterLink>
+                </div>
             </div>
         </div>
     </div>
@@ -45,6 +47,9 @@ import {RouterLink} from 'vue-router';
                     body: JSON.stringify({email: this.email, password:this.password})
                 }).then(r =>{
                     if(r.status == 404){
+                        r.json().then(x => this.message = x.message)
+                    }
+                    if(r.status == 403){
                         r.json().then(x => this.message = x.message)
                     }
                     if(r.status == 200){

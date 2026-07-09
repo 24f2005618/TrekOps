@@ -1,5 +1,7 @@
 <script setup>
   import {RouterView,RouterLink} from 'vue-router'
+  import L from "leaflet";
+  import "leaflet/dist/leaflet.css";
 </script>
 
 <template>
@@ -8,7 +10,7 @@
 
 <script>
   export default {
-    created(){
+    async created(){
       const empty = this.$store.state.user;
       let item = localStorage.getItem("user");
       item = (item) ? item : JSON.stringify(empty);

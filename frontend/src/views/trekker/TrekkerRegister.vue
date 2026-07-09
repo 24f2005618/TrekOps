@@ -3,7 +3,7 @@
 
 <template>
     <div class="container-fluid d-flex justify-content-center align-items-center" style="height: 100vh;">
-        <div class="card">
+        <div class="card col-6">
             <div class="card-body">
                 <h4 class="card-title" align="center">Register</h4>
                 <form v-on:submit.prevent="register">
@@ -22,6 +22,14 @@
                         {{error['email']}}
                       </div>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="email-input" class="form-label">Phone</label>
+                        <input v-model="form.phone" type="text" class="form-control" id="phone-input" placeholder="1234567890">
+                        <div class="invalid-feedback" style="display: block;" align="center">
+                        {{error['phone']}}
+                      </div>
+                    </div>
                      
                     <div class="mb-3">
                         <label for="password-input" class="form-label">Password</label>
@@ -34,7 +42,9 @@
                         <input type="submit" class="btn btn-primary" value="Register" :disabled="!validatePassword(form.password)">
                     </div>
                 </form>
-                Already have an account? <RouterLink to="/signin">Login</RouterLink>
+                <div class="text-center mt-3">
+                    Already have an account? <RouterLink to="/signin">Login</RouterLink>
+                </div>
             </div>
         </div>
     </div>
@@ -47,12 +57,14 @@ export default{
             form:{
                 name: '',
                 email: '',
-                password: ''
+                password: '',
+                phone: ''
             },
             error: {
                 name:'',
                 email: '',
-                password: ''
+                password: '',
+                phone: ''
             }
         }
     },
@@ -71,22 +83,6 @@ export default{
                 this.error.password = "Password must be at least 6 characters long.";
                 return false;
             }
-            // else if(!/[A-Z]/.test(value)){
-            //     this.error.password = "Password must contain at least one uppercase letter.";
-            //     return false;
-            // }
-            // else if(!/[a-z]/.test(value)){
-            //     this.error.password = "Password must contain at least one lowercase letter.";
-            //     return false;
-            // }
-            // else if(!/[0-9]/.test(value)){
-            //     this.error.password = "Password must contain at least one number.";
-            //     return false;
-            // }
-            // else if(!/[!@#$%^&*]/.test(value)){
-            //     this.error.password = "Password must contain at least one special character.";
-            //     return false;
-            // }
             else{
                 this.error.password = "";
                 return true;
@@ -116,11 +112,31 @@ export default{
                 return true;
             }
         },
+        validatePhone(value){
+            if(value==""){
+                this.error.phone="";
+                return false;
+            }
+            else if(!/^\d{10}$/.test(value)){
+                this.error.phone = "Invalid phone number.";
+                return false;
+            }
+            else{
+                this.error.phone = "";
+                return true;
+            }
+        },
         register(){
             if(!this.validateName(this.form.name)){
                 this.error.name = "Name cannot be empty.";
             }
             else if(!this.validateEmail(this.form.email)){
+                this.error.email = "Invalid email.";
+            }
+            else if(!this.validatePhone(this.form.phone)){
+                this.error.phone = "Invalid phone number.";
+            }
+            else if(!this.validatePassword(this.form.password)){
                 this.error.email = "Invalid email.";
             }
             else if(!this.validatePassword(this.form.password)){
@@ -149,6 +165,9 @@ export default{
                                 }
                                 else if(code=="ERROR0005"){
                                     this.error.email=x.message;
+                                }
+                                else if(code=="ERROR0006"){
+                                    this.error.phone=x.message;
                                 }
                             })
                         }
