@@ -10,6 +10,9 @@ import TrekkerBrowseTreks from '../views/trekker/TrekkerBrowseTreks.vue'
 import TrekkerViewTrek from '../views/trekker/TrekkerViewTrek.vue'
 import TrekkerMyBookings from '../views/trekker/TrekkerMyBookings.vue'
 import TrekkerHistory from '../views/trekker/TrekkerHistory.vue'
+import TrekkerProfile from '../views/trekker/TrekkerProfile.vue'
+import TrekkerEditPassword from '../views/trekker/TrekkerEditPassword.vue'
+import TrekkerEditProfile from '../views/trekker/TrekkerEditProfile.vue'
 
 import AdminLayout from '../views/admin/AdminLayout.vue'
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
@@ -27,7 +30,11 @@ import AdminBookings from '../views/admin/AdminBookings.vue'
 import StaffLayout from '../views/staff/StaffLayout.vue'
 import StaffDashboard from '../views/staff/StaffDashboard.vue'
 import StaffMyTreks from '../views/staff/StaffMyTreks.vue'
-
+import StaffViewTrek from '../views/staff/StaffViewTrek.vue'
+import StaffParticipants from '../views/staff/StaffParticipants.vue'
+import StaffProfile from '../views/staff/StaffProfile.vue'
+import StaffEditProfile from '../views/staff/StaffEditProfile.vue'
+import StaffEditPassword from '../views/staff/StaffEditPassword.vue'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -158,7 +165,18 @@ const router = createRouter({
                 },
                 {
                     name:'trekker-profile',
-                    path:'profile'
+                    path:'profile',
+                    component: TrekkerProfile
+                },
+                {
+                    name:'trekker-edit-profile',
+                    path:'edit/profile',
+                    component: TrekkerEditProfile
+                },
+                {
+                    name: 'trekker-edit-password',
+                    path: 'edit/password',
+                    component: TrekkerEditPassword
                 }
             ]
         },
@@ -183,12 +201,29 @@ const router = createRouter({
                     component: StaffMyTreks
                 },
                 {
+                    name:'staff-view-trek',
+                    path:'view/trek/:id',
+                    component: StaffViewTrek
+                },
+                {
                     name:'staff-participants',
-                    path:'participants'
+                    path:'participants',
+                    component: StaffParticipants
                 },
                 {
                     name:'staff-profile',
-                    path:'profile'
+                    path:'profile',
+                    component: StaffProfile
+                },
+                {
+                    name:'staff-edit-profile',
+                    path:'edit/profile',
+                    component: StaffEditProfile
+                },
+                {
+                    name: 'staff-edit-password',
+                    path: 'edit/password',
+                    component: StaffEditPassword
                 }
             ]
         }

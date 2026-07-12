@@ -186,7 +186,7 @@ export default {
                 fetch(import.meta.env.VITE_SERVER+"/admin/editTrek",{
                         method:"PATCH",
                         headers:{
-                                "Authentication-Token":this.$store.state.user.token
+                                "Authentication-Token":this.$store.getters.getToken
                         },
                         body:formData
                 }).then(r =>{

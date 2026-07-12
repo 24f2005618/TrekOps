@@ -81,7 +81,7 @@ import { RouterLink, RouterView } from 'vue-router'
     <i class="bi bi-person-circle me-2"></i>{{ name }} 
   </button>
   <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
-    <li><a class="dropdown-item" href="#">Edit</a></li>
+    <li><a class="dropdown-item" href="/staff/edit/profile">Edit</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><button class="dropdown-item text-danger" @click="logout"><b>Logout <i class="bi bi-indent"></i></b></button></li>
   </ul>

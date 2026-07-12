@@ -4,13 +4,17 @@
 <template>
 
 <div class="container-fluid">
-    <div class="row g-4">
-        <h4 class="col-lg-4">Booking History</h4>
-        <div class=" col-lg-8 d-flex align-items-center justify-content-end">
-        <i class="bi bi-search position-relative" style="left:750px"></i>
-        <input type="search" v-model="search" class="form-control" placeholder="Search History">
+    <div class="row g-4 align-items-center">
+    <h4 class="col-lg-4 mb-0">Booking History</h4>
+    <div class="col-lg-8">
+        <div class="input-group">
+            <span class="input-group-text">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="search" v-model="search" class="form-control" placeholder="Search History">
         </div>
     </div>
+</div>
     <div class="container-fluid mt-4" v-if="searched_history && searched_history.length>0">
     <table class="table  table-striped mt-4">
     <thead>

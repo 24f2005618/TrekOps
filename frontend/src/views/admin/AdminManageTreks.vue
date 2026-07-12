@@ -3,6 +3,9 @@ import {RouterLink} from 'vue-router';
 </script>
 
 <template>
+    <div class="alert alert-info" role="alert" v-if="message">
+        {{ message }}
+    </div>
     <div class="d-flex align-items-center justify-content-end position-relative">
     <h4 class="position-absolute start-50  translate-middle-x m-0">
       Treks List
@@ -36,9 +39,10 @@ import {RouterLink} from 'vue-router';
             <td>{{trek.slots}}</td>
             <td>
                 <span v-if="trek.status=='O'" class="badge bg-success">Open</span>
-                <span v-else class="badge bg-danger">Closed</span>
+                <span v-else-if="trek.status=='C'" class="badge bg-danger">Closed</span>
+                <span v-else class="badge bg-secondary">Completed</span>
             </td>
-            <td>
+            <td v-if="trek.status!='D'">
                <button class="btn btn-warning me-2" @click="$router.push({name:'edit-trek', params:{id: trek.id}})"><i class="bi bi-pencil"></i></button>
                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="bi bi-trash"></i></button>
             <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
@@ -69,7 +73,8 @@ export default{
     data(){
         return{
             treks: null,
-            search: ""
+            search: "",
+            message: ""
         }
     },
 
@@ -111,6 +116,11 @@ export default{
                 if(r.status==204){
                     this.treks = this.treks.filter(x=>x.id!=trekId);
                     document.querySelector("#deleteModal .btn-close").click();
+                }
+                else if(r.status==404){
+                    r.json().then(x=>{
+                        this.message = x.message;
+                    })
                 }
                 else if(r.status==401){
                     this.$store.commit("logout");

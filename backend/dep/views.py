@@ -11,7 +11,7 @@ import os
 api = Blueprint("api", __name__)
 
 DIFFICULTY_LABELS = {
-    "H": "Hard",
+    "H": "Hard",    
     "M": "Medium",
     "E": "Easy"
 }
@@ -60,6 +60,7 @@ def serialize_trek(trek):
         "image_url": route["image_url"] if route else None,
         "coordinates": route["coordinates"] if route else None,
     }
+
 
 @api.route("/fetchUser", methods=["GET"])
 @auth_required('token')
@@ -191,7 +192,7 @@ def get_stats():
                 "id": booking.id,
                 "trekker_name": booking.trekker.user.name,
             "trek_name": booking.trek.route.name, 
-                "booking_date": booking.booking_date.strftime("%Y-%m-%d"),
+                "booking_date": booking.booking_date.strftime("%d-%m-%Y"),
             "location": booking.trek.route.location,
                 "status":booking.status}
                 for booking in recent_bookings]
@@ -287,6 +288,10 @@ def delete_route():
         return {"message":"Route Not Found","code":"ERROR0022"},404
     if route.treks:
         return {"message":"Cannot delete route with existing treks","code":"ERROR0023"},400
+    image_url = route.image_url
+    if image_url:
+        filename = secure_filename(image_url)
+        os.remove(os.path.join("uploads", filename))
     db.session.delete(route)
     db.session.commit()
     return {"message":"Route Deleted Successfully"},204
@@ -367,8 +372,8 @@ def add_trek():
     if not staff:
         return {"message":"Staff Not Found","code":"ERROR0007"},404
     for trek in staff.treks:
-        if trek.start_date <= start_date <= trek.end_date or \
-            trek.start_date <= end_date <= trek.end_date:
+        if trek.status!='D' and (trek.start_date <= start_date <= trek.end_date or \
+            trek.start_date <= end_date <= trek.end_date):
             return jsonify({"message": "Staff is already assigned to another trek with same time range"}), 400
 
     trek = Trek(route_id=route_id,
@@ -418,20 +423,17 @@ def edit_trek():
     else:
         staff = trek.staff
 
-    effective_start_date = start_date or trek.start_date
-    effective_end_date = end_date or trek.end_date
-
-    if effective_start_date and effective_start_date < date.today():
+    if start_date and start_date < date.today():
         return {"message":"Trek Date Invalid","code":"ERROR0014"},400
 
-    if effective_end_date and effective_start_date and effective_end_date < effective_start_date:
+    if end_date and end_date < start_date:
         return {"message":"End Date Invalid","code":"ERROR0015"},400
 
-    for existing_trek in staff.treks:
-        if existing_trek.id == trek.id:
+    for etrek in staff.treks:
+        if etrek.id == trek.id or etrek.status == 'D':
             continue
-        if existing_trek.start_date <= effective_start_date <= existing_trek.end_date or \
-            existing_trek.start_date <= effective_end_date <= existing_trek.end_date:
+        if start_date <= etrek.end_date and \
+            etrek.start_date <= end_date:
             return jsonify({"message": "Staff is already assigned to another trek with same time range"}), 400
 
     if slots:
@@ -465,7 +467,7 @@ def get_bookings_admin():
         "trekker_name":booking.trekker.user.name,
         "trek_name":booking.trek.route.name,
         "location":booking.trek.route.location,
-        "booking_date":booking.booking_date.strftime("%Y-%m-%d"),
+        "booking_date":booking.booking_date.strftime("%d-%m-%Y"),
         "status": booking.status
     }for booking in bookings])
 
@@ -492,6 +494,45 @@ def toggle_trekker_status():
     trekker.user.active = not trekker.user.active
     db.session.commit()
     return {"message":"Trekker Status Updated Successfully"},204
+
+@api.route('/trekker/getStats',methods=["GET"])
+@auth_required('token')
+@roles_required('trekker')
+def get_stats_trekker():
+    trekker = current_user.trekker
+    upcoming_treks_count = Bookings.query.filter_by(trekker_id=trekker.id, status='B').filter(
+                            db.or_(db.and_(Bookings.trek.has(Trek.start_date == date.today()),
+                            Bookings.trek.has(Trek.reporting_time >= datetime.now().time())), 
+                            Bookings.trek.has(Trek.start_date > date.today()))).count()
+    completed_treks_count = Bookings.query.filter_by(trekker_id=trekker.id, status='D').count()
+    available_treks = Trek.query.filter(
+                            db.and_(Trek.status == 'O',
+                            db.or_(db.and_(Trek.start_date == date.today(), Trek.reporting_time >= datetime.now().time()), 
+                            Trek.start_date > date.today())))
+    recent_bookings = Bookings.query.filter_by(trekker_id=trekker.id, status='B').order_by(Bookings.booking_date.desc()).limit(3).all()
+    return jsonify({
+        "count":{
+            "upcoming_treks": upcoming_treks_count,
+            "completed_treks": completed_treks_count,
+            "available_treks": available_treks.count(),
+        },
+        "available_treks": [{
+            "id": trek.id,
+            "name": trek.route.name,
+            "location": trek.route.location,
+            "difficulty": trek.route.difficulty,
+            "duration": (trek.end_date - trek.start_date).days,
+            "slots": trek.available_slots,
+            "image_url": trek.route.image_url
+        } for trek in available_treks.limit(4).all()],
+        "recent_bookings": [{
+            "trek_name": booking.trek.route.name,
+            "location": booking.trek.route.location,
+            "status": booking.status
+        } for booking in recent_bookings]
+    })
+
+
 
 
 @api.route('/trekker/getTreks', methods=["GET"])
@@ -586,10 +627,202 @@ def get_history_trekker():
         "location":booking.trek.route.location,
         "staff":booking.trek.staff.user.name,
         "reporting_time":booking.trek.reporting_time.strftime("%H:%M %p") if booking.trek.reporting_time else None,
-        "start_date":booking.trek.start_date.strftime("%Y-%m-%d") if booking.trek.start_date else None,
-        "end_date":booking.trek.end_date.strftime("%Y-%m-%d") if booking.trek.end_date else None,
+        "start_date":booking.trek.start_date.strftime("%d-%m-%Y") if booking.trek.start_date else None,
+        "end_date":booking.trek.end_date.strftime("%d-%m-%Y") if booking.trek.end_date else None,
         "status": booking.status
     }for booking in bookings])
 
+@api.route('/getProfile',methods=["GET"])
+@auth_required('token')
+# @roles_required('trekker','staff')
+def get_profile():
+    user = current_user
+    if user.has_role('trekker'):
+        trekker = user.trekker
+        return jsonify({
+            "name": user.name,
+            "email": user.email,
+            "phone": trekker.phone
+        })
+    elif user.has_role('staff'):
+        staff = user.staff
+        return jsonify({
+            "name": user.name,
+            "email": user.email,
+            "phone": staff.phone,
+        })
+    else:
+        return {"message":"User Role Not Found","code":"ERROR0024"},404
 
+@api.route('/updateProfile',methods=["PATCH"])
+@auth_required('token')
+def update_profile():
+    user = current_user
+    name = request.json.get('name','')
+    email = request.json.get('email','')
+    phone = request.json.get('phone','')
+    password = request.json.get('password','')
+    if(not check_password_hash(user.password,password)):
+        return {"message":"Incorrect Password","code":"ERROR0025"},403
+    if not email or not re.match("\w+@\w+[.][a-z]+",email):
+        return {"message":"Invalid Email","code":"ERROR0002"},400
+    
+    if not name:
+        return {"message":"Name Required","code":"ERROR0003"},400
+    
+    if len(phone)!=10 or not phone.isdigit():
+        return {"message":"Invalid Phone Number","code":"ERROR0006"},400
+    user.name = name
+    user.email = email
+    if user.has_role('trekker'):
+        user.trekker.phone = phone
+    elif user.has_role('staff'):
+        user.staff.phone = phone
+    db.session.commit()
+    return {"message":"Profile Updated Successfully"},204
 
+@api.route('/editPassword',methods=["PATCH"])
+@auth_required('token')
+def edit_password():
+    user = current_user
+    old_password = request.json.get('current_password','')
+    new_password = request.json.get('new_password','')
+    confirm_password = request.json.get('confirm_password','')
+    if new_password != confirm_password:
+        return {"message":"New Password and Confirm Password do not match","code":"ERROR0026"},400
+    if(not check_password_hash(user.password,old_password)):
+        return {"message":"Incorrect Current Password","code":"ERROR0025"},403
+    if len(new_password)<6:
+        return {"message":"Password length should be atleast 6","code":"ERROR0004"},400
+    user.password = generate_password_hash(new_password)
+    db.session.commit()
+    return {"message":"Password Updated Successfully"},204
+
+@api.route('/staff/getTreks',methods=["GET"])
+@auth_required('token')
+@roles_required('staff')
+def get_treks_staff():
+    current_staff = current_user.staff
+    treks = [trek for trek in current_staff.treks]
+    return jsonify([{
+        "id": trek.id,
+        "trek_name": trek.route.name,
+        "location": trek.route.location,
+        "slots": trek.available_slots,
+        "duration": (trek.end_date - trek.start_date).days,
+        "status": trek.status,
+        "participants": len([booking for booking in trek.bookings if booking.status == 'B'])
+    } for trek in treks])
+
+@api.route('/staff/getTrek',methods=["POST"])
+@auth_required('token')
+@roles_required('staff')
+def get_trek_staff():
+    trek_id = request.json.get('id','')
+    trek = Trek.query.get(trek_id)
+    participants = [{'name': booking.trekker.user.name,
+                    'email': booking.trekker.user.email,
+                    'phone' : booking.trekker.phone,
+                    'booking_date': booking.booking_date.strftime("%d-%m-%Y")
+                    } for booking in trek.bookings if booking.status in ['B', 'D']] if trek else []
+    if not trek:
+        return {"message":"Trek Not Found","code":"ERROR0016"},404
+    if trek.staff_id != current_user.staff.id:
+        return {"message": "Unauthorized","code":"ERROR0020"},403
+    return jsonify({
+        'trek_name' : trek.route.name,
+        'location' : trek.route.location,
+        'start_date' : trek.start_date.strftime("%d-%m-%Y") if trek.start_date else None,
+        'end_date' : trek.end_date.strftime("%d-%m-%Y") if trek.end_date else None,
+        'available_slots' : trek.available_slots,
+        'total_slots' : trek.total_slots,
+        'status' : trek.status,
+        'participants' : participants,
+        'image_url' : trek.route.image_url
+    })
+
+@api.route('/staff/toggleTrekStatus',methods=["PATCH"])
+@auth_required('token')
+@roles_required('staff')
+def toggle_trek_status():
+    trek_id = request.json.get('id','')
+    trek = Trek.query.get(trek_id)
+    if not trek:
+        return {"message":"Trek Not Found","code":"ERROR0016"},404
+    if trek.staff_id != current_user.staff.id:
+        return {"message": "Unauthorized","code":"ERROR0020"},403
+    trek.status = 'C' if trek.status == 'O' else 'O'
+    db.session.commit()
+    return {"message":"Trek Status Updated Successfully"},204
+
+@api.route('/staff/completeTrek',methods=["PATCH"])
+@auth_required('token')
+@roles_required('staff')
+def complete_trek():
+    trek_id = request.json.get('id','')
+    trek = Trek.query.get(trek_id)
+    if not trek:
+        return {"message":"Trek Not Found","code":"ERROR0016"},404
+    if trek.staff_id != current_user.staff.id:
+        return {"message": "Unauthorized","code":"ERROR0020"},403
+    trek.status = 'D'
+    for booking in trek.bookings:
+        if booking.status == 'B':
+            booking.status = 'D'
+    db.session.commit()
+    return {"message":"Trek Completed Successfully"},204
+
+@api.route('/staff/getParticipants',methods=["GET"])
+@auth_required('token')
+@roles_required('staff')
+def get_participants():
+    current_staff = current_user.staff
+    participants = [{
+        "name": booking.trekker.user.name,
+        "email": booking.trekker.user.email,
+        "phone": booking.trekker.phone,
+        "booking_date": booking.booking_date.strftime("%d-%m-%Y"),
+        "booking_status": booking.status
+    } for trek in current_staff.treks for booking in trek.bookings if booking.status in ['B', 'D']]
+    return jsonify(participants)
+
+@api.route('/staff/getStats',methods=["GET"])
+@auth_required('token')
+@roles_required('staff')
+def get_stats_staff():
+    current_staff = current_user.staff
+    completed_treks_len = len([trek for trek in current_staff.treks if trek.status == 'D'])
+    upcoming_treks = [trek for trek in current_staff.treks if trek.status != 'D' and (trek.start_date > date.today() or (trek.start_date == date.today() and trek.reporting_time >= datetime.now().time()))]
+    current_trek = Trek.query.filter_by(staff_id=current_staff.id).filter(
+                    db.and_(Trek.status!='D', db.or_(
+                        date.today() > Trek.start_date, 
+                        db.and_(date.today() == Trek.start_date, 
+                        datetime.now().time() >= Trek.reporting_time)),
+                        date.today()<=Trek.end_date)).first()
+    next_trek = Trek.query.filter_by(staff_id=current_staff.id).filter(
+        db.and_(Trek.status!='D', db.or_(
+            Trek.start_date > date.today(),db.and_(
+            Trek.start_date == date.today(), Trek.reporting_time >= datetime.now().time())))
+            ).order_by(Trek.start_date.asc()).offset(1).first()
+    return jsonify({
+        "count": {
+        "completed_treks": completed_treks_len,
+        "upcoming_treks": len(upcoming_treks)
+        },
+        "upcoming_treks": [{
+            "id": trek.id,
+            "trek_name": trek.route.name,
+            "location": trek.route.location,
+            "slots": trek.available_slots,
+            "duration": (trek.end_date - trek.start_date).days,
+            "status": trek.status,
+            "image_url": trek.route.image_url
+        } for trek in upcoming_treks],
+        "current_trek": {
+            "id": current_trek.id,
+            "trek_name": current_trek.route.name,
+            "location": current_trek.route.location,
+            "participants": current_trek.total_slots-current_trek.available_slots,
+            "image_url": current_trek.route.image_url
+        } if current_trek else None
+    })

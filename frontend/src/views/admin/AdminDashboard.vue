@@ -108,6 +108,9 @@
                                 <span v-else-if="booking.status == 'C'" class="badge bg-danger">
                                     Cancelled
                                 </span>
+                                <span v-else class="badge bg-secondary">
+                                    Completed
+                                </span>
                             </td>
                         </tr>
                     </tbody>

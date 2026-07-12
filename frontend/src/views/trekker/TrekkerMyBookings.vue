@@ -17,7 +17,7 @@
                 type="search"
                 v-model="search"
                 class="form-control"
-                placeholder="Search My Bookings"
+                placeholder="Search Bookings"
             >
         </div>
     </div>

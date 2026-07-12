@@ -3,6 +3,7 @@ import os
 from flask_security import Security, SQLAlchemyUserDatastore
 from werkzeug.security import generate_password_hash
 from flask_cors import CORS
+from flask import send_from_directory
 
 from dep.models import db, User, Role
 from config import Config

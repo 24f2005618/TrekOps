@@ -51,7 +51,7 @@ class Trek(db.Model):
     start_date = db.Column(db.Date)
     end_date = db.Column(db.Date)
     reporting_time = db.Column(db.Time)
-    status = db.Column(db.String(),default='O') #O- open , C - Closed 
+    status = db.Column(db.String(),default='O') #O- Open , C - Closed , D- Done
 
 
 class Bookings(db.Model):
