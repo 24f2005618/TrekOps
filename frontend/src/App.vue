@@ -1,7 +1,5 @@
 <script setup>
   import {RouterView,RouterLink} from 'vue-router'
-  import L from "leaflet";
-  import "leaflet/dist/leaflet.css";
 </script>
 
 <template>

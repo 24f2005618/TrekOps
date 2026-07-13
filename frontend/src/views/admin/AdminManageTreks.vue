@@ -25,7 +25,8 @@ import {RouterLink} from 'vue-router';
         <th>Name</th>
         <th>Location</th>
         <th>Difficulty</th>
-        <th>Slots</th>
+        <th>Total Slots</th>
+        <th>Available Slots</th>
         <th>Status</th>
         <th>Actions</th>
         </tr>
@@ -36,7 +37,8 @@ import {RouterLink} from 'vue-router';
             <td>{{trek.name}}</td>
             <td>{{trek.location}}</td>
             <td>{{trek.difficulty}}</td>
-            <td>{{trek.slots}}</td>
+            <td>{{trek.total_slots}}</td>
+            <td>{{ trek.slots }}</td>
             <td>
                 <span v-if="trek.status=='O'" class="badge bg-success">Open</span>
                 <span v-else-if="trek.status=='C'" class="badge bg-danger">Closed</span>
@@ -117,8 +119,9 @@ export default{
                     this.treks = this.treks.filter(x=>x.id!=trekId);
                     document.querySelector("#deleteModal .btn-close").click();
                 }
-                else if(r.status==404){
+                else if(r.status==400){
                     r.json().then(x=>{
+                        document.querySelector("#deleteModal .btn-close").click();
                         this.message = x.message;
                     })
                 }

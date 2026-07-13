@@ -1,12 +1,15 @@
 from flask import current_app as app
 from dep.models import db,User,Role, Staff,Trekker,Route,Trek,Bookings
-from flask import Blueprint, request, jsonify, json, send_from_directory
+from dep import tasks
+from flask import Blueprint, request, jsonify, json, send_from_directory, send_file
 from werkzeug.security import check_password_hash,generate_password_hash
 from werkzeug.utils import secure_filename
 from flask_security import login_user, current_user, roles_required, auth_required, logout_user
 import re
 from datetime import date,datetime
 import os
+from celery.result import AsyncResult
+from extensions import cache
 
 api = Blueprint("api", __name__)
 
@@ -103,7 +106,7 @@ def register():
     password=request.json.get('password','')
 
 
-    if not email or not re.match("\w+@\w+[.][a-z]+",email):
+    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:
@@ -139,7 +142,7 @@ def add_staff():
     phone=request.json.get('phone','')
     password=request.json.get('password','')
 
-    if not email or not re.match("\w+@\w+[.][a-z]+",email):
+    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:
@@ -177,6 +180,7 @@ def get_user_name():
 @api.route('/getStats',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=300)
 def get_stats():
     staff=Staff.query.count()
     trekkers=Trekker.query.count()
@@ -201,6 +205,7 @@ def get_stats():
 @api.route('/getStaffs',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=300)
 def get_staffs():
     staffs = Staff.query.all()
     return jsonify([{"id": staff.id,"name": staff.user.name,"email": staff.user.email,"phone": staff.phone,"active": staff.user.active}for staff in staffs])
@@ -208,6 +213,7 @@ def get_staffs():
 @api.route('/getTrekkers',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=300)
 def get_trekkers():
     trekkers = Trekker.query.all()
     return jsonify([{"id": trekker.id,"name": trekker.user.name,"email": trekker.user.email,"phone": trekker.phone,"active": trekker.user.active}for trekker in trekkers])
@@ -215,6 +221,7 @@ def get_trekkers():
 @api.route('/admin/getTreks',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=300)
 def get_treks_admin():
     treks = Trek.query.all()
     return jsonify([serialize_trek(trek) for trek in treks])
@@ -223,6 +230,7 @@ def get_treks_admin():
 @api.route('/admin/getRoutes',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=300)
 def get_routes_admin():
     routes = Route.query.all()
     return jsonify([serialize_route(route) for route in routes])
@@ -275,6 +283,7 @@ def add_route():
     )
     db.session.add(route)
     db.session.commit()
+    cache.clear()
     return {"message":"Route Created Successfully"},201
 
 
@@ -294,6 +303,7 @@ def delete_route():
         os.remove(os.path.join("uploads", filename))
     db.session.delete(route)
     db.session.commit()
+    cache.clear()
     return {"message":"Route Deleted Successfully"},204
 
 @api.route('/admin/getTrek',methods=["POST"])
@@ -318,6 +328,7 @@ def delete_trek():
         return {"message":"Cannot delete trek with existing bookings","code":"ERROR0021"},400
     db.session.delete(trek)
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Deleted Successfully"},204
 
 @api.route('/admin/addTrek',methods=["POST"])
@@ -382,6 +393,7 @@ def add_trek():
             start_date=start_date,end_date=end_date)
     db.session.add(trek)
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Created Successfully"},201
 
 @api.route('/admin/editTrek',methods=["PATCH"])
@@ -391,7 +403,7 @@ def edit_trek():
     form = json.loads(request.form.get("form", "{}"))
     trek_id = form.get("id", "")
     route_id = form.get("route_id", "")
-    slots = form.get("slots", "")
+    total_slots = form.get("total_slots", "")
     staff_id = form.get("staff_id", "")
     reporting_time = form.get("reporting_time", "")
     start_date_str = form.get("start_date", "")
@@ -406,7 +418,7 @@ def edit_trek():
 
     try:
         route_id = int(route_id) if route_id else None
-        slots = int(slots) if slots else None
+        total_slots = int(total_slots) if total_slots else None
         staff_id = int(staff_id) if staff_id else None
     except (TypeError, ValueError):
         return {"message":"Invalid Trek Data","code":"ERROR0011"},400
@@ -436,9 +448,19 @@ def edit_trek():
             etrek.start_date <= end_date:
             return jsonify({"message": "Staff is already assigned to another trek with same time range"}), 400
 
-    if slots:
-        trek.total_slots=slots
-        trek.available_slots=slots
+    booked_slots = trek.total_slots - trek.available_slots
+
+    if total_slots:
+        if total_slots < booked_slots:
+            return {
+                "message": "Cannot reduce slots below current bookings",
+                "code": "ERROR0017"
+            }, 400
+
+        difference = total_slots - trek.total_slots
+        trek.total_slots = total_slots
+        trek.available_slots += difference
+
     if staff_id:
         trek.staff_id=staff_id
     if reporting_time:
@@ -455,11 +477,13 @@ def edit_trek():
         trek.route_id=route_id
 
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Updated Successfully"},204
 
 @api.route('/admin/getBookings',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
+@cache.cached(timeout=60)
 def get_bookings_admin():
     bookings = Bookings.query.all()
     return jsonify([{
@@ -481,6 +505,7 @@ def toggle_staff_status():
         return {"message":"Staff Not Found","code":"ERROR0007"},404
     staff.user.active = not staff.user.active
     db.session.commit()
+    cache.clear()
     return {"message":"Staff Status Updated Successfully"},204
 
 @api.route('/toggleTrekkerStatus',methods=["PATCH"])
@@ -493,6 +518,7 @@ def toggle_trekker_status():
         return {"message":"Trekker Not Found","code":"ERROR0009"},404
     trekker.user.active = not trekker.user.active
     db.session.commit()
+    cache.clear()
     return {"message":"Trekker Status Updated Successfully"},204
 
 @api.route('/trekker/getStats',methods=["GET"])
@@ -538,6 +564,7 @@ def get_stats_trekker():
 @api.route('/trekker/getTreks', methods=["GET"])
 @auth_required('token')
 @roles_required('trekker')
+@cache.cached(timeout=30)
 def get_treks_trekker():
     treks = (
         Trek.query.filter(db.and_(Trek.status == 'O',db.or_(db.and_(Trek.start_date == date.today(), Trek.reporting_time >= datetime.now().time()), Trek.start_date > date.today()))).all()
@@ -559,12 +586,14 @@ def get_treks_trekker():
 @api.route('/trekker/getTrek',methods=["POST"])
 @auth_required('token')
 @roles_required('trekker')
+@cache.cached(timeout=300)
 def get_trek_trekker():
     trek_id = request.json.get('id','')
     trek = Trek.query.get(trek_id)
     if not trek:
         return {"message":"Trek Not Found","code":"ERROR0016"},404
     return jsonify(serialize_trek(trek))
+
 @api.route('/trekker/bookTrek',methods=["POST"])
 @auth_required('token')
 @roles_required('trekker')
@@ -582,6 +611,7 @@ def book_trek():
     trek.status = 'C' if trek.available_slots==0 else 'O'
     db.session.add(booking)
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Booked Successfully"},201
 
 @api.route('/trekker/getBookings',methods=["GET"])
@@ -614,6 +644,7 @@ def cancel_booking():
     booking.status = 'C' # Cancelled
     booking.trek.available_slots += 1
     db.session.commit()
+    cache.clear()
     return {"message": "Booking Cancelled Successfully"},204
 
 @api.route('/trekker/getHistory',methods=["GET"])
@@ -631,6 +662,31 @@ def get_history_trekker():
         "end_date":booking.trek.end_date.strftime("%d-%m-%Y") if booking.trek.end_date else None,
         "status": booking.status
     }for booking in bookings])
+
+
+
+@api.route('/trekker/booking_history/export', methods=["GET"])
+@auth_required('token')
+@roles_required('trekker')
+def export_bookings():
+    trekker = current_user.trekker
+    task = tasks.export_history_csv.delay(trekker.id)
+    return jsonify({
+    "task_id": task.id,
+    "message": "Export started"
+}), 202
+
+@api.route("/trekker/booking_history/download")
+@auth_required("token")
+@roles_required("trekker")
+def download_history():
+    filename = f"exports/history_{current_user.trekker.id}.csv"
+
+    if not os.path.exists(filename):
+        return {"message": "File not ready"}, 404
+
+    return send_file(filename, as_attachment=True)
+
 
 @api.route('/getProfile',methods=["GET"])
 @auth_required('token')
@@ -664,7 +720,7 @@ def update_profile():
     password = request.json.get('password','')
     if(not check_password_hash(user.password,password)):
         return {"message":"Incorrect Password","code":"ERROR0025"},403
-    if not email or not re.match("\w+@\w+[.][a-z]+",email):
+    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:
@@ -679,6 +735,7 @@ def update_profile():
     elif user.has_role('staff'):
         user.staff.phone = phone
     db.session.commit()
+    cache.clear()
     return {"message":"Profile Updated Successfully"},204
 
 @api.route('/editPassword',methods=["PATCH"])
@@ -696,6 +753,7 @@ def edit_password():
         return {"message":"Password length should be atleast 6","code":"ERROR0004"},400
     user.password = generate_password_hash(new_password)
     db.session.commit()
+    cache.clear()
     return {"message":"Password Updated Successfully"},204
 
 @api.route('/staff/getTreks',methods=["GET"])
@@ -732,8 +790,8 @@ def get_trek_staff():
     return jsonify({
         'trek_name' : trek.route.name,
         'location' : trek.route.location,
-        'start_date' : trek.start_date.strftime("%d-%m-%Y") if trek.start_date else None,
-        'end_date' : trek.end_date.strftime("%d-%m-%Y") if trek.end_date else None,
+        'start_date' : trek.start_date.strftime("%Y-%m-%d") if trek.start_date else None,
+        'end_date' : trek.end_date.strftime("%Y-%m-%d") if trek.end_date else None,
         'available_slots' : trek.available_slots,
         'total_slots' : trek.total_slots,
         'status' : trek.status,
@@ -753,6 +811,7 @@ def toggle_trek_status():
         return {"message": "Unauthorized","code":"ERROR0020"},403
     trek.status = 'C' if trek.status == 'O' else 'O'
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Status Updated Successfully"},204
 
 @api.route('/staff/completeTrek',methods=["PATCH"])
@@ -770,6 +829,7 @@ def complete_trek():
         if booking.status == 'B':
             booking.status = 'D'
     db.session.commit()
+    cache.clear()
     return {"message":"Trek Completed Successfully"},204
 
 @api.route('/staff/getParticipants',methods=["GET"])
@@ -813,7 +873,8 @@ def get_stats_staff():
             "id": trek.id,
             "trek_name": trek.route.name,
             "location": trek.route.location,
-            "slots": trek.available_slots,
+            "participants" : trek.total_slots - trek.available_slots,
+            "difficulty":trek.route.difficulty,
             "duration": (trek.end_date - trek.start_date).days,
             "status": trek.status,
             "image_url": trek.route.image_url
@@ -826,3 +887,38 @@ def get_stats_staff():
             "image_url": current_trek.route.image_url
         } if current_trek else None
     })
+
+@api.route('/staff/updateSlots',methods=["PATCH"])
+@auth_required('token')
+@roles_required('staff')
+def update_slots():
+    trek_id = request.json.get('id','')
+    total_slots = request.json.get('total_slots','')
+    trek = Trek.query.get(trek_id)
+    if not trek:
+        return {"message":"Trek Not Found","code":"ERROR0016"},404
+    if trek.staff_id != current_user.staff.id:
+        return {"message": "Unauthorized","code":"ERROR0020"},403
+    if not total_slots or total_slots < trek.available_slots:
+        return {"message":"Invalid Number of Slots","code":"ERROR0021"},400
+    booked_slots = trek.total_slots - trek.available_slots
+    if total_slots:
+        if total_slots < booked_slots:
+            return {
+                "message": "Cannot reduce slots below current bookings",
+                "code": "ERROR0017"
+            }, 400
+
+        difference = total_slots - trek.total_slots
+        trek.total_slots = total_slots
+        trek.available_slots += difference
+    db.session.commit()
+    cache.clear()
+    return {"message":"Slots Updated Successfully","total_slots": trek.total_slots,"available_slots": trek.available_slots},200
+
+@api.route("/task/<string:id>")
+def status(id):
+    result = AsyncResult(id)
+    return {
+        "status": result.status
+    }, 200

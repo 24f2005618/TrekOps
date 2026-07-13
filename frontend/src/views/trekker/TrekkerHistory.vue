@@ -5,7 +5,12 @@
 
 <div class="container-fluid">
     <div class="row g-4 align-items-center">
-    <h4 class="col-lg-4 mb-0">Booking History</h4>
+    <div class="col-lg mb-0 d-flex">
+    <h4>Booking History</h4>
+    <button class="btn btn-primary ms-auto" v-if="history && history.length>0" @click="exportHistory">
+        <i class="bi bi-download me-2"></i>Export as CSV
+    </button>
+    </div>
     <div class="col-lg-8">
         <div class="input-group">
             <span class="input-group-text">
@@ -86,6 +91,59 @@ export default{
                 this.$router.push({name:"login"});
             }
         })
+    },
+    methods:{
+        async exportHistory() {
+
+    const response = await fetch(
+        import.meta.env.VITE_SERVER + "trekker/booking_history/export",
+        {
+            headers: {
+                "Authentication-Token": this.$store.getters.getToken
+            }
+        }
+    );
+
+    const data = await response.json();
+    const taskId = data.task_id;
+
+    const interval = setInterval(async () => {
+
+        const r = await fetch(
+            import.meta.env.VITE_SERVER + "task/" + taskId
+        );
+
+        const task = await r.json();
+
+        if (task.status === "SUCCESS") {
+
+            clearInterval(interval);
+
+            const download = await fetch(
+                import.meta.env.VITE_SERVER + "trekker/booking_history/download",
+                {
+                    headers: {
+                        "Authentication-Token": this.$store.getters.getToken
+                    }
+                }
+            );
+
+            const blob = await download.blob();
+
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "booking_history.csv";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+
+            window.URL.revokeObjectURL(url);
+        }
+
+    }, 1000);
+}
     }
 }
 </script>

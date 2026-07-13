@@ -25,7 +25,7 @@
     </div>
     <div class="mb-3">
     <label for="slots-input" class="form-label">Maximum Slots</label>
-    <input v-model="form.slots" type="number" class="form-control" id="slots-input">
+    <input v-model="form.total_slots" type="number" class="form-control" id="slots-input">
   </div>
    <div class="mb-3">
         <label for="staff" class="form-label">Assign Staff</label>
@@ -80,7 +80,7 @@ export default {
         return{
             form:{
                 route_id: '',
-                slots: '',
+                total_slots: '',
                 staff_id: '',
                 reporting_time: '',
                 start_date: '',
@@ -142,7 +142,7 @@ export default {
             return Number.isInteger(Number(value)) && Number(value) > 0;
         },
         validateSlots(value){
-            return Number.isInteger(Number(value)) && Number(value) > 0;
+            return Number.isInteger(Number(value)) && Number(value) >= 0;
         },
         validateStaff(value){
             return Number.isInteger(Number(value)) && Number(value) > 0;

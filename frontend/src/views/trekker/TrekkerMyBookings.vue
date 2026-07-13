@@ -4,8 +4,8 @@
 <template>
 <div class="container-fluid">
     <div class="row align-items-center g-3">
-    <div class="col-12 col-lg-4">
-        <h4 class="mb-0">My Bookings</h4>
+     <div class="col-lg mb-0 d-flex">
+    <h4>My Bookings</h4>
     </div>
 
     <div class="col-12 col-lg-8">
@@ -135,6 +135,7 @@ export default{
                 }
             })
         }
+
     }
 }
 </script>

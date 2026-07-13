@@ -102,7 +102,7 @@
                         </p>
 
                         <p class="card-text mb-1">
-                            <strong>Difficulty:</strong> {{ trek.difficulty }}
+                            <strong>Difficulty:</strong> {{ trek.difficulty=='H'? 'Hard': trek.difficulty=='M'?'Medium':'Easy' }}
                         </p>
 
                         <p class="card-text mb-1">
@@ -110,7 +110,7 @@
                         </p>
 
                         <p class="card-text">
-                            <strong>Slots left:</strong> {{ trek.slots }}
+                            <strong>Participants:</strong> {{ trek.participants }}
                         </p>
 
                         <a :href="`/staff/view/trek/${trek.id}`" class="btn btn-primary mt-auto">

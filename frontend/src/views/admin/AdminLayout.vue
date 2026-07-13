@@ -52,9 +52,6 @@ import { RouterLink, RouterView } from 'vue-router'
               Bookings
             </RouterLink>
 
-            <RouterLink to="/admin/reports" class="nav-link text-white" active-class="active">
-              Reports
-            </RouterLink>
             <RouterLink :to="{name:'login'}" class="position-relative top-50 text-white btn btn-danger mx-auto" active-class="active" style="width:40%" v-on:click="logout">
               Logout <i class="bi bi-indent"></i>
             </RouterLink>
@@ -92,8 +89,6 @@ import { RouterLink, RouterView } from 'vue-router'
     <i class="bi bi-person-circle me-2"></i>Admin
   </button>
   <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end text-center">
-    <li><a class="dropdown-item" href="#">Edit</a></li>
-    <li><hr class="dropdown-divider"></li>
     <li><button class="dropdown-item text-danger" @click="logout"><b>Logout <i class="bi bi-indent"></i></b></button></li>
   </ul>
 </div>

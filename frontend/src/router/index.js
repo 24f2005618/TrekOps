@@ -115,10 +115,6 @@ const router = createRouter({
                     name:'bookings',
                     path:'bookings',
                     component: AdminBookings
-                },
-                {
-                    name:'reports',
-                    path:'reports'
                 }
             ]
         },
