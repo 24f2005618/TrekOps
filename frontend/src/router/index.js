@@ -26,6 +26,7 @@ import AdminManageTreks from '../views/admin/AdminManageTreks.vue'
 import AdminManageStaffs from '../views/admin/AdminManageStaffs.vue'
 import AdminManageTrekkers from '../views/admin/AdminManageTrekkers.vue'
 import AdminBookings from '../views/admin/AdminBookings.vue'
+import AdminEditRoute from '../views/admin/AdminEditRoute.vue'
 
 import StaffLayout from '../views/staff/StaffLayout.vue'
 import StaffDashboard from '../views/staff/StaffDashboard.vue'
@@ -110,6 +111,11 @@ const router = createRouter({
                     name:'edit-trek',
                     path:'editTrek/:id',
                     component: AdminEditTrek
+                },
+                {
+                    name:'edit-route',
+                    path:'editRoute/:id',
+                    component: AdminEditRoute
                 },
                 {
                     name:'bookings',

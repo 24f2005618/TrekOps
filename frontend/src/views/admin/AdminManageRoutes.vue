@@ -38,6 +38,7 @@ import {RouterLink} from 'vue-router';
 			<td>{{route.difficulty}}</td>
 			<td>{{route.coordinates || '-'}}</td>
 			<td>
+				<button class="btn btn-warning me-2" @click="editRoute(route.id)"><i class="bi bi-pencil"></i></button>
 			   <button class="btn btn-danger" :data-bs-target="`#deleteRouteModal-${route.id}`" data-bs-toggle="modal"><i class="bi bi-trash"></i></button>
 			   <div class="modal fade" :id="`deleteRouteModal-${route.id}`" tabindex="-1" :aria-labelledby="`deleteRouteModalLabel-${route.id}`" aria-hidden="true">
 					<div class="modal-dialog">
@@ -122,6 +123,9 @@ export default{
 					this.$router.push({name:"login"});
 				}
 			})
+		},
+		editRoute(routeId){
+			this.$router.push({name:"edit-route", params:{id:routeId}});
 		}
 	}
 }

@@ -166,6 +166,7 @@ def add_staff():
     staff = Staff(phone=phone,user_id=user.id)
     db.session.add(staff)
     db.session.commit()
+    cache.clear()
     return {"message":"Staff Created Successfully"},201
 
 @api.route('/getUserName',methods=["GET"])
@@ -236,12 +237,11 @@ def get_routes_admin():
     return jsonify([serialize_route(route) for route in routes])
 
 
-@api.route('/admin/getRoute',methods=["POST"])
+@api.route('/admin/getRoute/<int:id>',methods=["GET"])
 @auth_required('token')
 @roles_required('admin')
-def get_route_admin():
-    route_id = request.json.get('id','')
-    route = Route.query.get(route_id)
+def get_route_admin(id):
+    route = Route.query.get(id)
     if not route:
         return {"message":"Route Not Found","code":"ERROR0022"},404
     return jsonify(serialize_route(route))
@@ -305,6 +305,50 @@ def delete_route():
     db.session.commit()
     cache.clear()
     return {"message":"Route Deleted Successfully"},204
+
+@api.route('/admin/editRoute/<int:id>',methods=["PATCH"])
+@auth_required('token')
+@roles_required('admin')
+def edit_route(id):
+    route = Route.query.get(id)
+    if not route:
+        return {"message":"Route Not Found","code":"ERROR0022"},404
+
+    form = json.loads(request.form.get("form", "{}"))
+    name = form.get("name", "")
+    location = form.get("location", "")
+    difficulty = normalize_difficulty(form.get("difficulty", ""))
+    description = form.get("description", "")
+    coordinates = form.get("coordinates", "")
+    image = request.files.get("image")
+
+    if not name:
+        return {"message":"Name Required","code":"ERROR0003"},400
+
+    if not location:
+        return {"message":"Location Required","code":"ERROR0010"},400
+
+    if difficulty not in DIFFICULTY_LABELS:
+        return {"message":"Difficulty Required","code":"ERROR0011"},400
+
+    if image and image.filename:
+        filename = secure_filename(image.filename)
+        image.save(os.path.join("uploads", filename))
+        # Delete old image if exists
+        if route.image_url:
+            old_filename = secure_filename(route.image_url)
+            os.remove(os.path.join("uploads", old_filename))
+        route.image_url = filename
+
+    route.name = name
+    route.location = location
+    route.difficulty = difficulty
+    route.description = description
+    route.coordinates = coordinates
+
+    db.session.commit()
+    cache.clear()
+    return {"message":"Route Updated Successfully"},204
 
 @api.route('/admin/getTrek',methods=["POST"])
 @auth_required('token')
@@ -899,7 +943,7 @@ def update_slots():
         return {"message":"Trek Not Found","code":"ERROR0016"},404
     if trek.staff_id != current_user.staff.id:
         return {"message": "Unauthorized","code":"ERROR0020"},403
-    if not total_slots or total_slots < trek.available_slots:
+    if not total_slots or total_slots < trek.total_slots-trek.available_slots:
         return {"message":"Invalid Number of Slots","code":"ERROR0021"},400
     booked_slots = trek.total_slots - trek.available_slots
     if total_slots:
