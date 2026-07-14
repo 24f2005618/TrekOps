@@ -13,10 +13,6 @@ venv/
 env/
 ENV/
 
-# Environment Variables
-.env
-.env.*
-!.env.example
 
 # Flask
 instance/
