@@ -3,7 +3,7 @@
 
 <template>
     <div class="container-fluid d-flex justify-content-center align-items-center" style="height: 100vh;">
-        <div class="card col-6">
+        <div class="card col-lg-4 col-md-6 col-sm-8 col-xs-12">
             <div class="card-body">
                 <h4 class="card-title" align="center">Register</h4>
                 <form v-on:submit.prevent="register">

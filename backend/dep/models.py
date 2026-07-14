@@ -61,7 +61,7 @@ class Bookings(db.Model):
     booking_date = db.Column(db.Date,default=db.func.current_date())
     status = db.Column(db.String(1),default='B') #B-Booked , C- Cancelled , D- Done
     trek = db.relationship('Trek',backref=backref('bookings',lazy=True))
-    __table_args__ = (db.UniqueConstraint('trekker_id', 'trek_id', 'status', name='unique_booking'),)
+
 
     
 

@@ -50,7 +50,7 @@ export default {
                 body: JSON.stringify(this.form)
             }).then(r=>{
                 if(r.status==204){
-                    this.$router.push({name:'staff-profile'})
+                    this.$router.push({name:'trekker-profile'})
                 }
                 else if(r.status==401){
                     this.$store.commit('logout');

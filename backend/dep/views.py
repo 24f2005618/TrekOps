@@ -106,7 +106,8 @@ def register():
     password=request.json.get('password','')
 
 
-    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
+    
+    if not email or not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:
@@ -142,7 +143,8 @@ def add_staff():
     phone=request.json.get('phone','')
     password=request.json.get('password','')
 
-    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
+    
+    if not email or not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:
@@ -681,10 +683,13 @@ def get_bookings_trekker():
 def cancel_booking():
     booking_id = request.json.get('id','')
     booking = Bookings.query.get(booking_id)
+    trek=booking.trek
     if not booking:
         return {"message": "Booking Not Found","code":"ERROR0019"},404
     if booking.trekker_id != current_user.trekker.id:
         return {"message": "Unauthorized","code":"ERROR0020"},403
+    if date.today()>trek.start_date or (date.today()==trek.start_date and datetime.now().time()>trek.reporting_time):
+        return {"message": "Cannot cancel booking after trek has started","code":"ERROR0027"},400
     booking.status = 'C' # Cancelled
     booking.trek.available_slots += 1
     db.session.commit()
@@ -764,7 +769,8 @@ def update_profile():
     password = request.json.get('password','')
     if(not check_password_hash(user.password,password)):
         return {"message":"Incorrect Password","code":"ERROR0025"},403
-    if not email or not re.match(r"\w+@\w+[.][a-z]+",email):
+    
+    if not email or not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", email):
         return {"message":"Invalid Email","code":"ERROR0002"},400
     
     if not name:

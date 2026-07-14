@@ -22,7 +22,11 @@
         </div>
     </div>
 </div>
+
     <div class="container-fluid" v-if="searched_bookings && searched_bookings.length>0">
+        <div v-if="message" class="alert alert-danger mt-3" role="alert">
+        {{ message }}
+        </div>
     <table class="table  table-striped mt-4">
     <thead>
         <tr>
@@ -84,7 +88,8 @@ export default{
     data(){
         return{
             bookings: [],
-            search: ""
+            search: "",
+            message: ""
         }
     },
     computed:{
@@ -132,6 +137,12 @@ export default{
                 else if(r.status==401){
                     this.$store.commit("logout");
                     this.$router.push({name:"login"});
+                }
+                else if(r.status==400){
+                    r.json().then(x=>{
+                        this.message = x.message;
+                        document.querySelector("#cancelModal .btn-close").click();
+                    })
                 }
             })
         }

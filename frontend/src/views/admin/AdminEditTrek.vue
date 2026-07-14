@@ -38,16 +38,7 @@
             </option>
         </select>
   </div>
-  <div class="mb-3">
-    <label for="difficulty" class="form-label">Difficulty Level</label>
-    <select id="difficulty" class="form-select" v-model="form.difficulty">
-        <option disabled value="">-- Select Difficulty --</option>
-
-        <option v-for="difficulty in ['Hard','Medium','Easy']" :key="difficulty" :value="difficulty">
-            {{ difficulty }}
-        </option>
-    </select>
-  </div>
+  
 </div>
 <div class="container">
 <div class="mb-3">
